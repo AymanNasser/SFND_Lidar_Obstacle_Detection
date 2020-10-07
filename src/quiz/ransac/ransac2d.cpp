@@ -6,6 +6,7 @@
 #include "../../processPointClouds.h"
 // using templates for processPointClouds so also include .cpp to help linker
 #include "../../processPointClouds.cpp"
+#include <math.h>
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr CreateData()
 {
@@ -68,18 +69,104 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 	
 	// TODO: Fill in this function
 
-	// For max iterations 
+	int cloudSize = cloud->points.size();
+	while(maxIterations--){
+		
+		std::unordered_set<int> inliers;
 
-	// Randomly sample subset and fit line
+		int randIndex_1 = rand() %  cloudSize;
+		int randIndex_2 = rand() % cloudSize;
 
-	// Measure distance between every point and fitted line
-	// If distance is smaller than threshold count it as inlier
+		pcl::PointXYZ point1 = cloud->points[randIndex_1];
+		pcl::PointXYZ point2 = cloud->points[randIndex_2];
 
-	// Return indicies of inliers from fitted line with most inliers
-	
+		for(int pointIndex=0; pointIndex< cloudSize; pointIndex++){
+			
+			float point_x = cloud->points[pointIndex].x;
+			float point_y = cloud->points[pointIndex].y;
+
+			float lineFormula = (point1.y - point2.y) * point_x +
+								(point2.x - point1.x) * point_y +
+								(point1.x * point2.y - point2.x * point1.y);
+			float a_2 = pow(point1.y - point2.y, 2);
+			float b_2 = pow(point2.x - point1.x, 2);
+			float distance = fabs(lineFormula) / sqrt(a_2 + b_2);
+
+			if( distance <= distanceTol)
+				inliers.insert(pointIndex);
+		}
+		/* Checking if the no. of inliers are bigger the current best result & if so
+		*  we update the best result ==> best fitted model
+		*/
+		if(inliers.size() > inliersResult.size())
+			inliersResult = inliers;
+	}
 	return inliersResult;
 
 }
+
+
+std::unordered_set<int> RansacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int maxIterations, float distanceTol)
+{
+
+	std::unordered_set<int> inliersResult;
+	srand(time(NULL));
+	
+	// TODO: Fill in this function
+
+	int cloudSize = cloud->points.size();
+	while(maxIterations--){
+		
+		std::unordered_set<int> inliers;
+
+		int randIndex_1 = rand() %  cloudSize;
+		int randIndex_2 = rand() % cloudSize;
+		int randIndex_3 = rand() & cloudSize;
+
+		pcl::PointXYZ point1 = cloud->points[randIndex_1];
+		pcl::PointXYZ point2 = cloud->points[randIndex_2];
+		pcl::PointXYZ point3 = cloud->points[randIndex_3];
+
+		float i = (point2.y -point1.y)*(point3.z - point1.z) - 
+				  (point2.z - point1.z)*(point3.y - point1.y);
+
+		float j = (point2.z - point1.z)*(point3.x - point1.x) - 
+				  (point2.x - point1.x)*(point3.z - point1.z);
+
+		float k = (point2.x - point1.x)*(point3.y - point1.y) - 
+				  (point2.y - point1.y)*(point3.x - point1.x);
+
+
+		for(int pointIndex=0; pointIndex< cloudSize; pointIndex++){
+			
+			float point_x = cloud->points[pointIndex].x;
+			float point_y = cloud->points[pointIndex].y;
+			float point_z = cloud->points[pointIndex].z;
+
+			float planeFormula = i*point_x + j*point_y + k*point_z - 
+								 (i*point1.x + j*point1.y + k*point1.z);
+
+			float distance = fabs(i*point_x + j*point_y + k*point_z + (i*point1.x + j*point1.y + k*point1.z)) \ 
+							/ sqrt(i*i + j*j + k*k);
+
+
+			if( distance <= distanceTol)
+				inliers.insert(pointIndex);
+		}
+		/* Checking if the no. of inliers are bigger the current best result & if so
+		*  we update the best result ==> best fitted model
+		*/
+		if(inliers.size() > inliersResult.size())
+			inliersResult = inliers;
+	}
+	return inliersResult;
+
+
+
+
+}
+
+
 
 int main ()
 {
@@ -88,13 +175,16 @@ int main ()
 	pcl::visualization::PCLVisualizer::Ptr viewer = initScene();
 
 	// Create data
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData();
+	// pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData();
+
+	// Create 3d-data
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData3D();
 	
 
 	// TODO: Change the max iteration and distance tolerance arguments for Ransac function
-	std::unordered_set<int> inliers = Ransac(cloud, 0, 0);
+	std::unordered_set<int> inliers = RansacPlane(cloud, 20, 1.0);
 
-	pcl::PointCloud<pcl::PointXYZ>::Ptr  cloudInliers(new pcl::PointCloud<pcl::PointXYZ>());
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudInliers(new pcl::PointCloud<pcl::PointXYZ>());
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudOutliers(new pcl::PointCloud<pcl::PointXYZ>());
 
 	for(int index = 0; index < cloud->points.size(); index++)
