@@ -111,8 +111,9 @@ std::unordered_set<int> RansacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, i
 
 	std::unordered_set<int> inliersResult;
 	srand(time(NULL));
-	
-	// TODO: Fill in this function
+
+	 // Time segmentation process
+    auto startTime = std::chrono::steady_clock::now();
 
 	int cloudSize = cloud->points.size();
 	while(maxIterations--){
@@ -159,10 +160,12 @@ std::unordered_set<int> RansacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, i
 		if(inliers.size() > inliersResult.size())
 			inliersResult = inliers;
 	}
+
+	auto endTime = std::chrono::steady_clock::now();
+	auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+    std::cout << "Ransac self-implemented segmentation took " << elapsedTime.count() << " milliseconds" << std::endl;
+
 	return inliersResult;
-
-
-
 
 }
 
@@ -182,7 +185,7 @@ int main ()
 	
 
 	// TODO: Change the max iteration and distance tolerance arguments for Ransac function
-	std::unordered_set<int> inliers = RansacPlane(cloud, 20, 1.0);
+	std::unordered_set<int> inliers = RansacPlane(cloud, 50, 0.5);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudInliers(new pcl::PointCloud<pcl::PointXYZ>());
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloudOutliers(new pcl::PointCloud<pcl::PointXYZ>());

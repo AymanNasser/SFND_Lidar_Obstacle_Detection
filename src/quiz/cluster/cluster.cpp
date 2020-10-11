@@ -69,10 +69,26 @@ void render2DTree(Node* node, pcl::visualization::PCLVisualizer::Ptr& viewer, Bo
 
 		render2DTree(node->left,viewer, lowerWindow, iteration, depth+1);
 		render2DTree(node->right,viewer, upperWindow, iteration, depth+1);
-
-
 	}
 
+}
+
+void proximity(std::vector<std::vector<float>> points, KdTree* tree, std::vector<int> &cluster, \
+			   std::vector<bool> &isProcessed, int &pntIndex, float &distanceTol)
+{
+	isProcessed[pntIndex] = true;
+	cluster.push_back(pntIndex);
+
+	std::vector<int> nearbyPntIds = tree->search(points[pntIndex], distanceTol);
+
+	for(int id : nearbyPntIds){
+
+		if(isProcessed[pntIndex])
+			continue;
+		
+		proximity(points, tree ,cluster, isProcessed, id, distanceTol);
+
+	}
 }
 
 std::vector<std::vector<int>> euclideanCluster(const std::vector<std::vector<float>>& points, KdTree* tree, float distanceTol)
@@ -81,9 +97,20 @@ std::vector<std::vector<int>> euclideanCluster(const std::vector<std::vector<flo
 	// TODO: Fill out this function to return list of indices for each cluster
 
 	std::vector<std::vector<int>> clusters;
- 
-	return clusters;
+	std::vector<bool> isProcessed(points.size(),false);
+	
+	for(int pntIndex = 0; pntIndex < points.size(); pntIndex++){
 
+		if(isProcessed[pntIndex])
+			continue;
+		
+		std::vector<int> cluster;
+		proximity(points, tree ,cluster, isProcessed, pntIndex, distanceTol);
+
+		clusters.push_back(cluster);
+	}
+
+	return clusters;
 }
 
 int main ()
@@ -91,10 +118,10 @@ int main ()
 
 	// Create viewer
 	Box window;
-  	window.x_min = -10;
-  	window.x_max =  10;
-  	window.y_min = -10;
-  	window.y_max =  10;
+  	window.x_min = -15;
+  	window.x_max =  15;
+  	window.y_min = -15;
+  	window.y_max =  15;
   	window.z_min =   0;
   	window.z_max =   0;
 	pcl::visualization::PCLVisualizer::Ptr viewer = initScene(window, 25);
@@ -138,6 +165,7 @@ int main ()
   		renderPointCloud(viewer, clusterCloud,"cluster"+std::to_string(clusterId),colors[clusterId%3]);
   		++clusterId;
   	}
+	  
   	if(clusters.size()==0)
   		renderPointCloud(viewer,cloud,"data");
 	
